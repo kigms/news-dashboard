@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react'
 import ArticleInfo from "./components/ArticleInfo"
+import SummaryStats from "./components/SummaryStats"
 import './App.css'
 
 const API_KEY = import.meta.env.VITE_APP_API_KEY
 
 function App() {
   // Initializing useState hook to "null" since it's using objects
-  const [articleList, setArticleList] = useState(null)
+  const [articleList, setArticleList] = useState([])
+  const [initialNumArticles, setInitialNumArticles] = useState("")
+  const [filteredResults, setFilteredResults] = useState([])
+  const [searchInput, setSearchInput] = useState("")
 
+  let today = new Date()
+  let dd = String(today.getDate()).padStart(2, '0')
+  let mm = String(today.getMonth()).padStart(2, '0') // no need to increment by 1 to get current month
+  let yyyy = String(today.getFullYear())
+  let dash = "-"
+  let thisDayLastMonthDate = yyyy + dash + mm + dash + dd;
   // Query NewsAPI to get a list of articles.
 
   // Use React Hook useEffect() to call the API.
@@ -28,23 +38,21 @@ function App() {
     a re-render.*/
    useEffect(() => {
     const fetchAllArticleData = async () => {
-      console.log("Fetching articles...")
       /*await makes it so that fetch, a promise-
         returning function behaves as though it
         is synchronous by suspending execution
         until the returned promise is rejected
         or fulfilled.*/
       let articleData = await fetch(
-        `https://newsapi.org/v2/top-headlines?country=us&apiKey=${API_KEY}`
+      //source*, date are defined from user input
+        `https://newsapi.org/v2/everything?domains=apnews.com&from=${thisDayLastMonthDate}&apiKey=${API_KEY}`
       )
-      console.log("Between two awaits")
       let articleDataJson = await articleData.json()
       /*Set articleList to json data by passing
         it to setArticleList() and use it in
         useState().*/
-        console.log("Fetched article data")
-        console.log(articleDataJson)
-      setArticleList(articleDataJson)
+      setArticleList(articleDataJson.articles)
+      setInitialNumArticles(articleDataJson.totalResults)
     }
     /*Catch an error returned by the async function
       in case the initiated Promise object isn't
@@ -52,31 +60,80 @@ function App() {
     fetchAllArticleData().catch(console.error)
    }, []) 
   
+   const searchItems = searchValue => {
+    setSearchInput(searchValue)
+    if(searchValue !== ""){
+      const filteredData = articleList.filter((article) => {
+        const searchedAttributes = [article.title].map(attr => attr.toLowerCase())
+        return searchedAttributes.some(attr => attr.includes(searchValue))
+      })
+      setFilteredResults(filteredData)
+    } else{
+      setFilteredResults(articleList)
+    }
+   }
+
    // Render the the API call in our page.
   return (
-    <>
-      <div className="whole-page">
+    <div className="whole-page">
+      <div className="side-bar">
         <h1>Old News</h1>
+        <nav></nav>
+      </div>
+      {<SummaryStats
+        //Hardcoding "United States for now."
+              source="Source: The Associated Press"
+        // Year and date will be received from user input
+              initialDate={thisDayLastMonthDate}
+        // Num of articles will be received from query results
+        // with a default that should be from initial query
+              initialNumArticles={initialNumArticles}
+      />
+      }
+      <div className="dashboard-body">
+        <input type="text"
+               placeholder="Search..."
+               onChange={(inputString)=>searchItems(inputString.target.value)} />
         <ul>
-          {/*Check if API call has completed/is not
-            still waiting on results to fill up
-            the list of articles.
-            Once it is known that the list isn't
-            empty, we can display it.
-            (Conditional Rendering)*/
+          {
+          searchInput.length > 0 ?
+            filteredResults?.map(article => (
+              <ArticleInfo
+                key={article.title}
+                date={article.publishedAt}
+                title={article.title}
+                author={article.author}
+                desc={article.description}
+                url={article.url}
+              />
+            ))
+            :
+          /*Check if API call has completed/is not
+              still waiting on results to fill up
+              the list of articles.
+              Once it is known that the list isn't
+              empty, we can display it.
+              (Conditional Rendering)*/
 
-            /*Check if the list is not null,
-              then iterate through the list, render-
-              ing a component for each article and
-              passing in props for key, title, author,
-              and body.*/
+              /*Check if the list is not null,
+                then iterate through the list, render-
+                ing a component for each article and
+                passing in props for key, title, author,
+                and body.*/
             articleList?.map(article => (
-              <ArticleInfo/>
+              <ArticleInfo
+                key={article.title}
+                date={article.publishedAt}
+                title={article.title}
+                author={article.author}
+                desc={article.description}
+                url={article.url}
+              />
             ))
           }
         </ul>
       </div>
-    </>
+    </div>
   )
 }
 
