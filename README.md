@@ -2,7 +2,7 @@
 
 Submitted by: Kigen Shealy
 
-This web app: Data dashboard
+This web app: Data Dashboard
 
 ## Required Features
 
